@@ -1,4 +1,5 @@
 {
-    "consulPath": 
-            "39.106.8.113:8500"
+    "consulPath": "39.106.8.113:8500",
+    "name":"syncJobWorker",
+    "ttl":10
 }

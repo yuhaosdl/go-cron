@@ -27,7 +27,11 @@ func main() {
 		fmt.Println("初始化Consul失败")
 		return
 	}
-
+	err = cron_work.InitRegister()
+	if err != nil {
+		fmt.Println("注册worker失败")
+		return
+	}
 	for {
 		time.Sleep(1 * time.Second)
 	}

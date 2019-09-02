@@ -17,11 +17,12 @@ type JobManger struct {
 	Client  *consulapi.Client
 	KV      *consulapi.KV
 	Session *consulapi.Session
+	Agent   *consulapi.Agent
 }
 
 func InitJobManger() (err error) {
 	config := &consulapi.Config{
-		Address: ConsulConf.Path,
+		Address: consulConf.Path,
 	}
 	client, err := consulapi.NewClient(config)
 	if err != nil {
@@ -32,6 +33,7 @@ func InitJobManger() (err error) {
 		Client:  client,
 		KV:      client.KV(),
 		Session: client.Session(),
+		Agent:   client.Agent(),
 	}
 	go g_JobManger.watchCronJob()
 	return
@@ -47,7 +49,7 @@ func (jobManger *JobManger) watchCronJob() (err error) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	plan.Run(ConsulConf.Path)
+	plan.Run(consulConf.Path)
 	return
 }
 

@@ -9,10 +9,13 @@ import (
 
 type ConsulConfig struct {
 	Path string `json:"consulPath"`
+	//worker名称
+	Name string `json:"name"`
+	TTL  int    `json:"ttl"` //10s
 }
 
 var (
-	ConsulConf *ConsulConfig
+	consulConf *ConsulConfig
 )
 
 //初始化配置文件
@@ -26,7 +29,7 @@ func InitConfig(fileName string) (err error) {
 	if err != nil {
 		return
 	}
-	err = json.Unmarshal(content, &ConsulConf)
+	err = json.Unmarshal(content, &consulConf)
 	if err != nil {
 		return
 	}

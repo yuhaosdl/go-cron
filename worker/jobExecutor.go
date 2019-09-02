@@ -38,18 +38,10 @@ func (executor *Executor) ExecuteJob(info *common.JobExecuteInfo) {
 		// 随机睡眠(0~1s)
 		time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)
 		// 初始化分布式锁
-		l, err := g_JobManger.GetLock(info.Job.Name + info.PlanTime.String())
+		l, err := g_JobManger.GetLock(info.Job.Name + info.PlanTime.Format("2006-01-02 15:04:05"))
 		if err != nil {
 			fmt.Println(err)
 		}
-		// stopCh := make(chan struct{})
-		// leaderCh, err := l.Lock(stopCh)
-		// defer func(l *consulapi.Lock) {
-		// 	close(l.sessionRenew)
-		// 	l.sessionRenew = nil
-		// }(l)
-		//l.Unlock()
-
 		if !l || err != nil { // 上锁失败
 			fmt.Println("获取锁失败了")
 			fmt.Println(err)
