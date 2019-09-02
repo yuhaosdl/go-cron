@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	cron_work "gostudy/go-cron/worker"
+	cron_work "go-cron/worker"
 	"time"
 )
 

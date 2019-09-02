@@ -2,8 +2,7 @@ package worker
 
 import (
 	"fmt"
-	"gostudy/go-cron/common"
-	"time"
+	"go-cron/common"
 
 	consulwatch "github.com/hashicorp/consul/api/watch"
 
@@ -63,16 +62,35 @@ func (jobManger *JobManger) buildChangeEvent(idx uint64, result interface{}) {
 	}
 }
 
-func (jobManger *JobManger) GetLock(jobName string) (l *consulapi.Lock, err error) {
-	opts := &consulapi.LockOptions{
-		Key:          common.JOB_LOCK_DIR + jobName,
-		SessionTTL:   "10s",
-		LockTryOnce:  true,
-		LockWaitTime: 1 * time.Millisecond,
+// GetLock 获取锁
+func (jobManger *JobManger) GetLock(lockName string) (bool, error) {
+	//分布式锁
+	sessionOpts := &consulapi.SessionEntry{
+		Behavior: consulapi.SessionBehaviorDelete,
+		TTL:      "10s",
 	}
-	l, err = jobManger.Client.LockOpts(opts)
+	session, _, err := jobManger.Session.Create(sessionOpts, nil)
 	if err != nil {
-		fmt.Println(err)
+		return false, err
 	}
-	return
+	kvPair := &consulapi.KVPair{
+		Key:     common.JOB_LOCK_DIR + lockName,
+		Session: session,
+	}
+	l, _, err := jobManger.KV.Acquire(kvPair, nil)
+	if err != nil {
+		return false, err
+	}
+	// opts := &consulapi.LockOptions{
+	// 	Key:          common.JOB_LOCK_DIR + lockName,
+	// 	SessionTTL:   "10s",
+	// 	LockTryOnce:  true,
+	// 	LockWaitTime: 1 * time.Millisecond,
+	// 	SessionOpts:  sessionOpts,
+	// }
+	// l, err = jobManger.Client.LockOpts(opts)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
+	return l, err
 }

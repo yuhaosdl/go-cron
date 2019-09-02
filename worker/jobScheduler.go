@@ -2,7 +2,7 @@ package worker
 
 import (
 	"fmt"
-	"gostudy/go-cron/common"
+	"go-cron/common"
 	"time"
 
 	consulapi "github.com/hashicorp/consul/api"
@@ -62,7 +62,7 @@ func (scheduler *Scheduler) scheduleLoop() {
 func (scheduler *Scheduler) handleJobResult(result *common.JobExecuteResult) {
 	// 删除执行状态
 	delete(scheduler.jobExecutingTable, result.ExecuteInfo.Job.Name)
-	fmt.Printf("执行完了任务，返回结果为%+v", result)
+	fmt.Printf("执行完了任务，返回结果为%+v\n", result)
 	//todo 日志记录结果
 }
 

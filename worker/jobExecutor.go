@@ -2,7 +2,7 @@ package worker
 
 import (
 	"fmt"
-	"gostudy/go-cron/common"
+	"go-cron/common"
 	"math/rand"
 	"os/exec"
 	"time"
@@ -18,7 +18,7 @@ var (
 	g_executor *Executor
 )
 
-// 执行一个任务
+// ExecuteJob 执行任务
 func (executor *Executor) ExecuteJob(info *common.JobExecuteInfo) {
 	go func() {
 		var (
@@ -38,15 +38,19 @@ func (executor *Executor) ExecuteJob(info *common.JobExecuteInfo) {
 		// 随机睡眠(0~1s)
 		time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)
 		// 初始化分布式锁
-		l, err := g_JobManger.GetLock(info.Job.Name)
+		l, err := g_JobManger.GetLock(info.Job.Name + info.PlanTime.String())
 		if err != nil {
 			fmt.Println(err)
 		}
-		stopCh := make(chan struct{})
-		leaderCh, err := l.Lock(stopCh)
-		defer l.Unlock()
+		// stopCh := make(chan struct{})
+		// leaderCh, err := l.Lock(stopCh)
+		// defer func(l *consulapi.Lock) {
+		// 	close(l.sessionRenew)
+		// 	l.sessionRenew = nil
+		// }(l)
+		//l.Unlock()
 
-		if err != nil || leaderCh == nil { // 上锁失败
+		if !l || err != nil { // 上锁失败
 			fmt.Println("获取锁失败了")
 			fmt.Println(err)
 			result.Err = err
@@ -60,17 +64,17 @@ func (executor *Executor) ExecuteJob(info *common.JobExecuteInfo) {
 			} else {
 				output, err = executor.ExecuteHttpJob(info)
 			}
-
 			// 记录任务结束时间
 			result.EndTime = time.Now()
 			result.Output = output
 			result.Err = err
 		}
-		time.Sleep(4 * time.Second)
 		// 任务执行完成后，把执行的结果返回给Scheduler，Scheduler会从executingTable中删除掉执行记录
 		g_JobScheduler.pushJobResult(result)
 	}()
 }
+
+// ExecuteShellJob 执行shell命令
 func (executor *Executor) ExecuteShellJob(info *common.JobExecuteInfo) (output []byte, err error) {
 	// 执行shell命令
 	cmd := exec.CommandContext(info.CancelCtx, "/bin/bash", "-c", info.Job.Command)
@@ -80,6 +84,8 @@ func (executor *Executor) ExecuteShellJob(info *common.JobExecuteInfo) (output [
 
 	return
 }
+
+// ExecuteHttpJob 执行Http任务
 func (executor *Executor) ExecuteHttpJob(info *common.JobExecuteInfo) (output []byte, err error) {
 
 	url := info.Job.Url
@@ -102,7 +108,7 @@ func (executor *Executor) ExecuteHttpJob(info *common.JobExecuteInfo) (output []
 	return
 }
 
-//  初始化执行器
+// InitExecutor 初始化执行器
 func InitExecutor() (err error) {
 	g_executor = &Executor{}
 	return
