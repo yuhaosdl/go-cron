@@ -43,17 +43,21 @@ func (executor *Executor) ExecuteJob(info *common.JobExecuteInfo) {
 			fmt.Println(err)
 		}
 		if !l || err != nil { // 上锁失败
+			// if !l {
+			// 	common.Logger.Info(msg string, fields ...zapcore.Field)
+			// 	return
+			// }
 			//fmt.Println(info.Job.Name, ",获取锁失败了")
+			result.Output = "抢锁失败:" + info.Job.Name
 			result.Err = err
 			result.EndTime = time.Now()
 		} else {
-			//fmt.Println(info.Job.Name, ",获取了锁")
 			// 上锁成功后，重置任务启动时间
 			result.StartTime = time.Now()
 			if info.Job.Type == "shell" {
-				output, err = executor.ExecuteShellJob(info)
+				output, err = executor.executeShellJob(info)
 			} else {
-				output, err = executor.ExecuteHttpJob(info)
+				output, err = executor.executeHttpJob(info)
 			}
 			// 记录任务结束时间
 			result.EndTime = time.Now()
@@ -66,18 +70,16 @@ func (executor *Executor) ExecuteJob(info *common.JobExecuteInfo) {
 }
 
 // ExecuteShellJob 执行shell命令
-func (executor *Executor) ExecuteShellJob(info *common.JobExecuteInfo) (output []byte, err error) {
+func (executor *Executor) executeShellJob(info *common.JobExecuteInfo) (output []byte, err error) {
 	// 执行shell命令
 	cmd := exec.CommandContext(info.CancelCtx, "/bin/bash", "-c", info.Job.Command)
-
 	// 执行并捕获输出
 	output, err = cmd.CombinedOutput()
-
 	return
 }
 
 // ExecuteHttpJob 执行Http任务
-func (executor *Executor) ExecuteHttpJob(info *common.JobExecuteInfo) (output []byte, err error) {
+func (executor *Executor) executeHttpJob(info *common.JobExecuteInfo) (output []byte, err error) {
 
 	url := info.Job.Url
 
@@ -86,16 +88,13 @@ func (executor *Executor) ExecuteHttpJob(info *common.JobExecuteInfo) (output []
 
 	status, resp, err := fasthttp.Post(nil, url, args)
 	if err != nil {
-		//fmt.Println("请求失败:", err.Error())
 		return
 	}
 
 	if status != fasthttp.StatusOK {
-		//fmt.Println("请求没有成功:", status)
 		return
 	}
 	output = resp
-	//fmt.Println(string(resp))
 	return
 }
 
