@@ -2,8 +2,11 @@ package worker
 
 import (
 	"fmt"
+	"go-cron/common"
 	"net"
 	"time"
+
+	"go.uber.org/zap"
 
 	consulapi "github.com/hashicorp/consul/api"
 )
@@ -21,7 +24,8 @@ func InitRegister() (err error) {
 	}
 	err = g_JobManger.Agent.ServiceRegister(service)
 	if err != nil {
-		fmt.Println(err)
+		common.Logger.Error("服务注册失败", zap.Error(err))
+		return
 	}
 	//注册worker服务 心跳
 	go func(checkID string) {
@@ -30,7 +34,7 @@ func InitRegister() (err error) {
 			<-keepAliveTicker.C
 			err := g_JobManger.Agent.PassTTL(checkID, "")
 			if err != nil {
-				fmt.Println(err)
+				common.Logger.Error("续租失败", zap.Error(err))
 			}
 		}
 	}("service:" + service.ID)
@@ -41,7 +45,7 @@ func InitRegister() (err error) {
 func GetLocalAddress() string {
 	netInterfaces, err := net.Interfaces()
 	if err != nil {
-		fmt.Println("net.Interfaces failed, err:", err.Error())
+		common.Logger.Error("net.Interfaces failed", zap.Error(err))
 	}
 	for i := 0; i < len(netInterfaces); i++ {
 		if (netInterfaces[i].Flags & net.FlagUp) != 0 {

@@ -5,6 +5,8 @@ import (
 	"go-cron/common"
 	"time"
 
+	"go.uber.org/zap"
+
 	consulapi "github.com/hashicorp/consul/api"
 )
 
@@ -62,8 +64,13 @@ func (scheduler *Scheduler) scheduleLoop() {
 func (scheduler *Scheduler) handleJobResult(result *common.JobExecuteResult) {
 	// 删除执行状态
 	delete(scheduler.jobExecutingTable, result.ExecuteInfo.Job.Name)
-	fmt.Printf("执行完了任务，返回结果为%+v\n", result)
-	//todo 日志记录结果
+	//日志记录结果
+	if result.Err != nil {
+		common.Logger.Error(fmt.Sprintf("执行任务（%s）失败", result.ExecuteInfo.Job.Name), zap.Error(result.Err))
+	} else {
+		common.Logger.Info(fmt.Sprintf("执行任务（%s）成功", result.ExecuteInfo.Job.Name), zap.String("output", result.Output), zap.Time("startTime", result.StartTime), zap.Time("endTime", result.EndTime))
+	}
+
 }
 
 // 重新计算任务调度状态
@@ -76,7 +83,7 @@ func (scheduler *Scheduler) schedule() (scheduleAfter time.Duration) {
 
 	// 如果任务表为空话，随便睡眠多久
 	if len(scheduler.planTable) == 0 {
-		fmt.Println("没有任务")
+		common.Logger.Info("没有任务")
 		scheduleAfter = 1 * time.Second
 		return
 	}
@@ -108,7 +115,7 @@ func (scheduler *Scheduler) TryStartJob(jobPlan *common.JobSchedulePlan) {
 
 	// 如果任务正在执行，跳过本次调度
 	if _, jobExecuting := scheduler.jobExecutingTable[jobPlan.Job.Name]; jobExecuting {
-		fmt.Println("尚未退出,跳过执行:", jobPlan.Job.Name)
+		common.Logger.Info(fmt.Sprintf("尚未退出,跳过执行:%s", jobPlan.Job.Name))
 		return
 	}
 
@@ -119,7 +126,7 @@ func (scheduler *Scheduler) TryStartJob(jobPlan *common.JobSchedulePlan) {
 	scheduler.jobExecutingTable[jobPlan.Job.Name] = jobExecuteInfo
 
 	// 执行任务
-	fmt.Println("执行任务:", jobExecuteInfo.Job.Name, jobExecuteInfo.PlanTime, jobExecuteInfo.RealTime, jobExecuteInfo.Job.Command)
+	common.Logger.Info(fmt.Sprintf("执行任务:%s", jobExecuteInfo.Job.Name), zap.Time("PlanTime", jobExecuteInfo.PlanTime), zap.Time("RealTime", jobExecuteInfo.RealTime))
 	g_executor.ExecuteJob(jobExecuteInfo)
 }
 
@@ -127,6 +134,9 @@ func (scheduler *Scheduler) TryStartJob(jobPlan *common.JobSchedulePlan) {
 func (scheduler *Scheduler) handleChangeEvent() {
 	newPlanTable := make(map[string]*common.JobSchedulePlan)
 	for _, kvpair := range scheduler.newKVPairs {
+		if kvpair.Key == common.JOB_SAVE_DIR {
+			continue
+		}
 		jobName := common.ExtractJobName(kvpair.Key)
 		if plan, exists := scheduler.planTable[jobName]; exists {
 			if plan.ModifyIndex == kvpair.ModifyIndex {

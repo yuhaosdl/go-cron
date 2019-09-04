@@ -28,14 +28,14 @@ func (executor *Executor) ExecuteJob(info *common.JobExecuteInfo) {
 		// 任务结果
 		result := &common.JobExecuteResult{
 			ExecuteInfo: info,
-			Output:      make([]byte, 0),
+			Output:      "",
 		}
 
 		// 记录任务开始时间
 		result.StartTime = time.Now()
 
 		// 上锁
-		// 随机睡眠(0~1s)
+		// 随机睡眠(0~1s) 防止时间不一致 导致某个节点一直获取到锁
 		time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)
 		// 初始化分布式锁
 		l, err := g_JobManger.GetLock(info.Job.Name + info.PlanTime.Format("2006-01-02 15:04:05"))
@@ -43,12 +43,11 @@ func (executor *Executor) ExecuteJob(info *common.JobExecuteInfo) {
 			fmt.Println(err)
 		}
 		if !l || err != nil { // 上锁失败
-			fmt.Println("获取锁失败了")
-			fmt.Println(err)
+			//fmt.Println(info.Job.Name, ",获取锁失败了")
 			result.Err = err
 			result.EndTime = time.Now()
 		} else {
-			fmt.Println("获取了锁")
+			//fmt.Println(info.Job.Name, ",获取了锁")
 			// 上锁成功后，重置任务启动时间
 			result.StartTime = time.Now()
 			if info.Job.Type == "shell" {
@@ -58,7 +57,7 @@ func (executor *Executor) ExecuteJob(info *common.JobExecuteInfo) {
 			}
 			// 记录任务结束时间
 			result.EndTime = time.Now()
-			result.Output = output
+			result.Output = string(output)
 			result.Err = err
 		}
 		// 任务执行完成后，把执行的结果返回给Scheduler，Scheduler会从executingTable中删除掉执行记录
@@ -87,16 +86,16 @@ func (executor *Executor) ExecuteHttpJob(info *common.JobExecuteInfo) (output []
 
 	status, resp, err := fasthttp.Post(nil, url, args)
 	if err != nil {
-		fmt.Println("请求失败:", err.Error())
+		//fmt.Println("请求失败:", err.Error())
 		return
 	}
 
 	if status != fasthttp.StatusOK {
-		fmt.Println("请求没有成功:", status)
+		//fmt.Println("请求没有成功:", status)
 		return
 	}
 	output = resp
-	fmt.Println(string(resp))
+	//fmt.Println(string(resp))
 	return
 }
 
